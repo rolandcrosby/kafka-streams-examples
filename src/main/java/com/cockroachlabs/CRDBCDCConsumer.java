@@ -19,6 +19,7 @@ public class CRDBCDCConsumer {
         streamsConfiguration.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         streamsConfiguration.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, GenericAvroSerde.class);
         streamsConfiguration.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, GenericAvroSerde.class);
+        streamsConfiguration.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, ClusterLogicalTimestampExtractor.class);
         streamsConfiguration.put("schema.registry.url", "http://localhost:8081");
         final StreamsBuilder builder = new StreamsBuilder();
         final KStream<GenericRecord, GenericRecord> quotesStream = builder.stream(topic);
