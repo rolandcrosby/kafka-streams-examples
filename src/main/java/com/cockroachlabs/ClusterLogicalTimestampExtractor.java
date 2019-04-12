@@ -5,15 +5,18 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 public class ClusterLogicalTimestampExtractor implements org.apache.kafka.streams.processor.TimestampExtractor {
     @Override
-    public long extract(ConsumerRecord<Object, Object> consumerRecord, long l) {
-        GenericRecord value = (GenericRecord) consumerRecord.value();
+    public long extract(final ConsumerRecord<Object, Object> consumerRecord, final long l) {
+        final GenericRecord value = (GenericRecord) consumerRecord.value();
         String ts;
-        try {
-            ts = (String) value.get("resolved");
-        } catch (Exception e) {
+        ts = (String) value.get("resolved");
+        if (ts == null) {
             ts = (String) value.get("updated");
+            if (ts == null) {
+                throw new RuntimeException("can't find resolved or updated timestamp");
+            }
         }
-        int decimal = ts.indexOf(".");
+
+        final int decimal = ts.indexOf(".");
         return Integer.parseInt(ts.substring(0, decimal - 6));
     }
 }
