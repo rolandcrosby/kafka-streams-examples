@@ -11,7 +11,8 @@ import java.util.Properties;
 
 public class CRDBCDCConsumer {
     public static void main(final String[] args) {
-        final String bootstrapServers = args.length > 0 ? args[0] : "localhost:9092";
+        final String bootstrapServers = args.length >= 1 ? args[0] : "localhost:9092";
+        final String topic = args.length >= 2 ? args[1] : "avro_episodes";
         final Properties streamsConfiguration = new Properties();
         streamsConfiguration.put(StreamsConfig.APPLICATION_ID_CONFIG, "crdb-cdc-consumer");
         streamsConfiguration.put(StreamsConfig.CLIENT_ID_CONFIG, "crdb-cdc-consumer-client");
@@ -20,7 +21,7 @@ public class CRDBCDCConsumer {
         streamsConfiguration.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, GenericAvroSerde.class);
         streamsConfiguration.put("schema.registry.url", "http://localhost:8081");
         final StreamsBuilder builder = new StreamsBuilder();
-        final KStream<GenericRecord, GenericRecord> quotesStream = builder.stream("plain_episodes");
+        final KStream<GenericRecord, GenericRecord> quotesStream = builder.stream(topic);
         quotesStream.foreach((key, value) -> System.out.println(key + "=>" + value));
         final KafkaStreams streams = new KafkaStreams(builder.build(), streamsConfiguration);
         streams.cleanUp();
