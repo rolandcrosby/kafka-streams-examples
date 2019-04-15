@@ -20,7 +20,7 @@ public class CRDBExactlyOnceTransformer implements ValueTransformerWithKey<Gener
     public CRDBExactlyOnceTransformer(final String stateStoreName) {
         this.stateStoreName = stateStoreName;
         if (fakeAvroNull == null) {
-            Schema fakeNullRecordSchema = Schema.createRecord("__crdb_null__", "fake null record", "", false);
+            final Schema fakeNullRecordSchema = Schema.createRecord("__crdb_null__", "fake null record", "", false);
             fakeNullRecordSchema.setFields(Collections.singletonList(
                     new Schema.Field("__crdb_null__", Schema.create(Schema.Type.NULL), "fake null", JsonProperties.NULL_VALUE))
             );
