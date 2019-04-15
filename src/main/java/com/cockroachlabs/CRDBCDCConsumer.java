@@ -33,9 +33,6 @@ public class CRDBCDCConsumer {
         final String stateStoreName = "latest-timestamp-store";
 
         final StreamsBuilder builder = new StreamsBuilder();
-        final KStream<GenericRecord, GenericRecord> inStream = builder.stream(topic);
-
-        inStream.transformValues(() -> new CRDBExactlyOnceTransformer(stateStoreName), stateStoreName);
 
         final Serde<GenericRecord> stateKeySerde = new GenericAvroSerde();
         stateKeySerde.configure(new SingletonMap(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081"), true);
@@ -46,6 +43,9 @@ public class CRDBCDCConsumer {
         );
         builder.addStateStore(tsStoreBuilder);
 
+        final KStream<GenericRecord, GenericRecord> inStream = builder.stream(topic);
+        inStream.transformValues(() -> new CRDBExactlyOnceTransformer(stateStoreName), stateStoreName)
+                .to("exactly_once_" + topic);
 
         final KafkaStreams streams = new KafkaStreams(builder.build(), streamsConfiguration);
         streams.cleanUp();
