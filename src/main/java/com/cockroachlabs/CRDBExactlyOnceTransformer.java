@@ -15,13 +15,17 @@ public class CRDBExactlyOnceTransformer implements ValueTransformerWithKey<Gener
     private ProcessorContext processorContext;
     private String stateStoreName;
     private KeyValueStore<GenericRecord, String> state;
-    private static final GenericRecord fakeAvroNull = new GenericRecordBuilder(
-            Schema.createRecord(Collections.singletonList(
-                    new Schema.Field("__crdb_null__", Schema.create(Schema.Type.NULL), "fake null", JsonProperties.NULL_VALUE))
-            )).build();
+    private static GenericRecord fakeAvroNull;
 
     public CRDBExactlyOnceTransformer(final String stateStoreName) {
         this.stateStoreName = stateStoreName;
+        if (fakeAvroNull == null) {
+            Schema fakeNullRecordSchema = Schema.createRecord("__crdb_null__", "fake null record", "", false);
+            fakeNullRecordSchema.setFields(Collections.singletonList(
+                    new Schema.Field("__crdb_null__", Schema.create(Schema.Type.NULL), "fake null", JsonProperties.NULL_VALUE))
+            );
+            fakeAvroNull = new GenericRecordBuilder(fakeNullRecordSchema).build();
+        }
     }
 
     @Override
