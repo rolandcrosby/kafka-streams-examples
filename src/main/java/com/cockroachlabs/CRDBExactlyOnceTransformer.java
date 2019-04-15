@@ -34,7 +34,7 @@ public class CRDBExactlyOnceTransformer implements ValueTransformerWithKey<Gener
         String lastTS;
         try {
             lastTS = this.state.get(key);
-        } catch (NullPointerException e) {
+        } catch (final NullPointerException e) {
             lastTS = null;
         }
         if (lastTS == null || tsString.compareTo(lastTS) > 0) {
