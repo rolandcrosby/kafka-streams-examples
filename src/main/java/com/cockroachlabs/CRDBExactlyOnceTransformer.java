@@ -57,9 +57,11 @@ public class CRDBExactlyOnceTransformer implements ValueTransformerWithKey<Gener
             lastTS = null;
         }
         if (lastTS == null || tsString.compareTo(lastTS) > 0) {
+            System.out.printf("UPDATE: %s\tts %s > %s\n", k, tsString, lastTS);
             this.state.put(k, tsString);
             return value;
         }
+        System.out.printf("IGNORE: %s\tts %s <= %s\n", k, tsString, lastTS);
         return null;
     }
 
