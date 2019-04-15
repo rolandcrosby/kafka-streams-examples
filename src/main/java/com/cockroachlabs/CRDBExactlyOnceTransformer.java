@@ -1,6 +1,8 @@
 package com.cockroachlabs;
 
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.util.Utf8;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.processor.ProcessorContext;
@@ -10,6 +12,7 @@ public class CRDBExactlyOnceTransformer implements ValueTransformerWithKey<Gener
     private ProcessorContext processorContext;
     private String stateStoreName;
     private KeyValueStore<GenericRecord, String> state;
+    private static final GenericRecord avroNull = new GenericRecordBuilder(Schema.create(Schema.Type.NULL)).build();
 
     public CRDBExactlyOnceTransformer(final String stateStoreName) {
         this.stateStoreName = stateStoreName;
@@ -30,15 +33,21 @@ public class CRDBExactlyOnceTransformer implements ValueTransformerWithKey<Gener
                 throw new RuntimeException("timestamp not found in input message");
             }
         }
+
+        GenericRecord k = key;
+        if (k == null) {
+            k = avroNull;
+        }
+
         final String tsString = ts.toString();
         String lastTS;
         try {
-            lastTS = this.state.get(key);
+            lastTS = this.state.get(k);
         } catch (final NullPointerException e) {
             lastTS = null;
         }
         if (lastTS == null || tsString.compareTo(lastTS) > 0) {
-            this.state.put(key, tsString);
+            this.state.put(k, tsString);
             return value;
         }
         return null;
