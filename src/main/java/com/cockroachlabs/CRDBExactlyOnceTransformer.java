@@ -1,5 +1,6 @@
 package com.cockroachlabs;
 
+import org.apache.avro.JsonProperties;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
@@ -8,11 +9,16 @@ import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.state.KeyValueStore;
 
+import java.util.Collections;
+
 public class CRDBExactlyOnceTransformer implements ValueTransformerWithKey<GenericRecord, GenericRecord, GenericRecord> {
     private ProcessorContext processorContext;
     private String stateStoreName;
     private KeyValueStore<GenericRecord, String> state;
-    private static final GenericRecord avroNull = new GenericRecordBuilder(Schema.create(Schema.Type.NULL)).build();
+    private static final GenericRecord fakeAvroNull = new GenericRecordBuilder(
+            Schema.createRecord(Collections.singletonList(
+                    new Schema.Field("__crdb_null__", Schema.create(Schema.Type.NULL), "fake null", JsonProperties.NULL_VALUE))
+            )).build();
 
     public CRDBExactlyOnceTransformer(final String stateStoreName) {
         this.stateStoreName = stateStoreName;
@@ -36,7 +42,7 @@ public class CRDBExactlyOnceTransformer implements ValueTransformerWithKey<Gener
 
         GenericRecord k = key;
         if (k == null) {
-            k = avroNull;
+            k = fakeAvroNull;
         }
 
         final String tsString = ts.toString();
