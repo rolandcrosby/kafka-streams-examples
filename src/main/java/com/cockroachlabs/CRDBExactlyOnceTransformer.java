@@ -31,7 +31,12 @@ public class CRDBExactlyOnceTransformer implements ValueTransformerWithKey<Gener
             }
         }
         final String tsString = ts.toString();
-        final String lastTS = this.state.get(key);
+        String lastTS;
+        try {
+            lastTS = this.state.get(key);
+        } catch (NullPointerException e) {
+            lastTS = null;
+        }
         if (lastTS == null || tsString.compareTo(lastTS) > 0) {
             this.state.put(key, tsString);
             return value;
