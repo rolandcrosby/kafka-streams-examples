@@ -4,8 +4,6 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import static java.lang.Long.parseLong;
-
 public class ClusterLogicalTimestampExtractor implements org.apache.kafka.streams.processor.TimestampExtractor {
     @Override
     public long extract(final ConsumerRecord<Object, Object> consumerRecord, final long l) {
@@ -20,6 +18,6 @@ public class ClusterLogicalTimestampExtractor implements org.apache.kafka.stream
         }
         final String tsString = ts.toString();
         final int decimal = tsString.indexOf(".");
-        return parseLong(tsString.substring(0, decimal - 6));
+        return Long.parseLong(tsString.substring(0, decimal - 6));
     }
 }

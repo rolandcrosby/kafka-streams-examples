@@ -5,13 +5,14 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.util.Utf8;
-import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
+import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.state.KeyValueStore;
 
 import java.util.Collections;
 
-public class CRDBExactlyOnceTransformer implements ValueTransformerWithKey<GenericRecord, GenericRecord, GenericRecord> {
+public class CRDBExactlyOnceTransformer implements Transformer<GenericRecord, GenericRecord, Iterable<KeyValue<GenericRecord, GenericRecord>>> {
     private ProcessorContext processorContext;
     private String stateStoreName;
     private KeyValueStore<GenericRecord, String> state;
@@ -35,7 +36,7 @@ public class CRDBExactlyOnceTransformer implements ValueTransformerWithKey<Gener
     }
 
     @Override
-    public GenericRecord transform(final GenericRecord key, final GenericRecord value) {
+    public Iterable<KeyValue<GenericRecord, GenericRecord>> transform(final GenericRecord key, final GenericRecord value) {
         Utf8 ts = (Utf8) value.get("updated");
         if (ts == null) {
             ts = (Utf8) value.get("resolved");
@@ -59,10 +60,10 @@ public class CRDBExactlyOnceTransformer implements ValueTransformerWithKey<Gener
         if (lastTS == null || tsString.compareTo(lastTS) > 0) {
             System.out.printf("UPDATE: %s\tts %s > %s\n", k, tsString, lastTS);
             this.state.put(k, tsString);
-            return value;
+            return Collections.singleton(new KeyValue(key, value));
         }
         System.out.printf("IGNORE: %s\tts %s <= %s\n", k, tsString, lastTS);
-        return null;
+        return Collections.EMPTY_LIST;
     }
 
     @Override
