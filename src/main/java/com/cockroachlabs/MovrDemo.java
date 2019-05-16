@@ -56,8 +56,6 @@ public class MovrDemo {
         final String stateStorePrefix = "latest_timestamp_";
         final String exactlyOncePrefix = "exactly_once_";
         final String timestampStateStoreName = stateStorePrefix + topic;
-        final String activeRidesByCityStateStoreName = "active-rides-by-city";
-        final String revenueByCityStateStoreName = "revenue-by-city";
 
         final Serde<GenericRecord> stateKeySerde = new GenericAvroSerde();
         stateKeySerde.configure(new SingletonMap(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistry), true);
@@ -101,33 +99,17 @@ public class MovrDemo {
                         .with(Serdes.String(), Serdes.Long())
         );
         final KafkaStreams streams = new KafkaStreams(builder.build(), streamsConfiguration);
-        streams.cleanUp();
-        streams.start();
+
 
         final HttpServer server = HttpServer.create(new InetSocketAddress(7001), 0);
         server.createContext("/", new StatsHandler(streams));
         server.setExecutor(null);
+
+        streams.cleanUp();
+        streams.start();
         server.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-//            final ReadOnlyKeyValueStore<String, Long> activeRidesStore =
-//                    streams.store(activeRidesByCityStateStoreName, QueryableStoreTypes.keyValueStore());
-//            final KeyValueIterator<String, Long> ridesRange = activeRidesStore.all();
-//            while (ridesRange.hasNext()) {
-//                final KeyValue<String, Long> next = ridesRange.next();
-//                System.out.println("rides in " + next.key + ": " + next.value);
-//            }
-//            ridesRange.close();
-//
-//            final ReadOnlyKeyValueStore<String, Long> revenueStore =
-//                    streams.store(revenueByCityStateStoreName, QueryableStoreTypes.keyValueStore());
-//            final KeyValueIterator<String, Long> revenueRange = activeRidesStore.all();
-//            while (revenueRange.hasNext()) {
-//                final KeyValue<String, Long> next = revenueRange.next();
-//                System.out.println("revenue in " + next.key + ": " + next.value);
-//            }
-//            revenueRange.close();
-
             server.stop(0);
             streams.close();
         }));
@@ -143,14 +125,13 @@ public class MovrDemo {
         }
 
         private void init() {
-            this.activeRidesStore = streams.store("active-rides-by-city", QueryableStoreTypes.keyValueStore());
-            this.revenueStore = streams.store("revenue-by-city", QueryableStoreTypes.keyValueStore());
         }
 
         @Override
         public void handle(final HttpExchange ex) throws IOException {
             if (this.activeRidesStore == null || this.revenueStore == null) {
-                init();
+                this.activeRidesStore = streams.store("active-rides-by-city", QueryableStoreTypes.keyValueStore());
+                this.revenueStore = streams.store("revenue-by-city", QueryableStoreTypes.keyValueStore());
             }
             final Headers headers = ex.getResponseHeaders();
             headers.set("Content-type", "text/html; charset=utf-8");
