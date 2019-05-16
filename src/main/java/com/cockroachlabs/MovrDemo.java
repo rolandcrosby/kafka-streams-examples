@@ -17,9 +17,7 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.*;
-import org.apache.kafka.streams.state.KeyValueStore;
-import org.apache.kafka.streams.state.StoreBuilder;
-import org.apache.kafka.streams.state.Stores;
+import org.apache.kafka.streams.state.*;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -107,7 +105,7 @@ public class MovrDemo {
         streams.start();
 
         final HttpServer server = HttpServer.create(new InetSocketAddress(7001), 0);
-        server.createContext("/", new StatsHandler());
+        server.createContext("/", new StatsHandler(streams));
         server.setExecutor(null);
         server.start();
 
@@ -136,11 +134,36 @@ public class MovrDemo {
     }
 
     static class StatsHandler implements HttpHandler {
+        private final KafkaStreams streams;
+        private final ReadOnlyKeyValueStore<String, Long> activeRidesStore;
+        private final ReadOnlyKeyValueStore<String, Long> revenueStore;
+
+        public StatsHandler(KafkaStreams streams) {
+            this.streams = streams;
+            this.activeRidesStore = streams.store("active-rides-by-city", QueryableStoreTypes.keyValueStore());
+            this.revenueStore = streams.store("revenue-by-city", QueryableStoreTypes.keyValueStore());
+        }
+
         @Override
         public void handle(final HttpExchange ex) throws IOException {
             final Headers headers = ex.getResponseHeaders();
             headers.set("Content-type", "text/html; charset=utf-8");
-            final String response = "<h1>here's my response!</h1>";
+            String response = "<style>body{font-family: sans-serif;}</style>";
+            response += "<h2>Rides by City</h2><ul>";
+            final KeyValueIterator<String, Long> ridesRange = activeRidesStore.all();
+            while (ridesRange.hasNext()) {
+                final KeyValue<String, Long> next = ridesRange.next();
+                response = response + "<li>" + next.key + ": " + next.value + "</li>";
+            }
+            ridesRange.close();
+            response += "</ul><h2>Revenue by City</h2><ul>";
+            final KeyValueIterator<String, Long> revenueRange = activeRidesStore.all();
+            while (revenueRange.hasNext()) {
+                final KeyValue<String, Long> next = revenueRange.next();
+                response = response + "<li>" + next.key + ": " + next.value + "</li>";
+            }
+            revenueRange.close();
+            response += "</ul>";
             ex.sendResponseHeaders(200, response.length());
             final OutputStream os = ex.getResponseBody();
             os.write(response.getBytes());
