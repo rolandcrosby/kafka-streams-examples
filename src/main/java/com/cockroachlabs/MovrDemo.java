@@ -135,17 +135,23 @@ public class MovrDemo {
 
     static class StatsHandler implements HttpHandler {
         private final KafkaStreams streams;
-        private final ReadOnlyKeyValueStore<String, Long> activeRidesStore;
-        private final ReadOnlyKeyValueStore<String, Long> revenueStore;
+        private ReadOnlyKeyValueStore<String, Long> activeRidesStore;
+        private ReadOnlyKeyValueStore<String, Long> revenueStore;
 
         public StatsHandler(final KafkaStreams streams) {
             this.streams = streams;
+        }
+
+        private void init() {
             this.activeRidesStore = streams.store("active-rides-by-city", QueryableStoreTypes.keyValueStore());
             this.revenueStore = streams.store("revenue-by-city", QueryableStoreTypes.keyValueStore());
         }
 
         @Override
         public void handle(final HttpExchange ex) throws IOException {
+            if (this.activeRidesStore == null || this.revenueStore == null) {
+                init();
+            }
             final Headers headers = ex.getResponseHeaders();
             headers.set("Content-type", "text/html; charset=utf-8");
             String response = "<style>body{font-family: sans-serif;}</style>";
