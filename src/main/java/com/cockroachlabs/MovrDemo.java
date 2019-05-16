@@ -138,7 +138,7 @@ public class MovrDemo {
         private final ReadOnlyKeyValueStore<String, Long> activeRidesStore;
         private final ReadOnlyKeyValueStore<String, Long> revenueStore;
 
-        public StatsHandler(KafkaStreams streams) {
+        public StatsHandler(final KafkaStreams streams) {
             this.streams = streams;
             this.activeRidesStore = streams.store("active-rides-by-city", QueryableStoreTypes.keyValueStore());
             this.revenueStore = streams.store("revenue-by-city", QueryableStoreTypes.keyValueStore());
