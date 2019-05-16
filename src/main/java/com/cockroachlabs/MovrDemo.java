@@ -136,7 +136,7 @@ public class MovrDemo {
 
     static class StatsHandler implements HttpHandler {
         @Override
-        public void handle(HttpExchange ex) throws IOException {
+        public void handle(final HttpExchange ex) throws IOException {
             final Headers headers = ex.getResponseHeaders();
             headers.set("Content-type", "text/html; charset=utf-8");
             final String response = "<h1>here's my response!</h1>";
