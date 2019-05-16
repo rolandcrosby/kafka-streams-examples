@@ -22,6 +22,7 @@ import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -75,37 +76,37 @@ public class MovrDemo {
 
         final Conversion<BigDecimal> conv = new Conversions.DecimalConversion();
         final Schema byteSchema = Schema.create(Schema.Type.BYTES);
-        final LogicalType decType = LogicalTypes.decimal(10, 2);
+        final LogicalType decType = LogicalTypes.decimal(10, 0);
         final KStream<GenericRecord, GenericRecord> exactlyOnceStream = builder.stream(exactlyOncePrefix + topic);
-        final KGroupedStream<String, Double> ridesByCity = exactlyOnceStream.flatMap((GenericRecord k, GenericRecord v) -> {
+        final KGroupedStream<String, Long> ridesByCity = exactlyOnceStream.flatMap((GenericRecord k, GenericRecord v) -> {
             if (k == null) return Collections.EMPTY_LIST;
             final GenericRecord rec = (GenericRecord) v.get("after");
             final String city = ((Utf8) rec.get("city")).toString();
             final ByteBuffer revBytes = (ByteBuffer) rec.get("revenue");
             if (revBytes == null) {
-                return Collections.singleton(new KeyValue<>(city, -1.0));
+                return Collections.singleton(new KeyValue<>(city, -1L));
             } else {
                 final BigDecimal revenue = conv.fromBytes(revBytes, byteSchema, decType);
-                return Collections.singleton(new KeyValue<>(city, revenue.doubleValue()));
+                return Collections.singleton(new KeyValue<>(city, revenue.longValue()));
             }
         }).groupByKey(Grouped.with(Serdes.String(), Serdes.Double()));
         final KTable<String, Long> activeRides = ridesByCity.aggregate(
                 () -> 0L,
-                (city, revenue, acc) -> revenue == -1.0 ? acc + 1 : acc - 1,
+                (city, revenue, acc) -> revenue == -1L ? acc + 1 : acc - 1,
                 Materialized.as("active-rides-by-city")
                         .with(Serdes.String(), Serdes.Long())
         );
-        final KTable<String, Double> revenueByCity = ridesByCity.aggregate(
-                () -> 0.0,
-                (city, revenue, acc) -> revenue == -1.0 ? acc : acc + revenue,
+        final KTable<String, Long> revenueByCity = ridesByCity.aggregate(
+                () -> 0L,
+                (city, revenue, acc) -> revenue == -1L ? acc : acc + revenue,
                 Materialized.as("revenue-by-city")
-                        .with(Serdes.String(), Serdes.Double())
+                        .with(Serdes.String(), Serdes.Long())
         );
         final KafkaStreams streams = new KafkaStreams(builder.build(), streamsConfiguration);
         streams.cleanUp();
         streams.start();
 
-        HttpServer server = HttpServer.create(new InetSocketAddress(7001), 0);
+        final HttpServer server = HttpServer.create(new InetSocketAddress(7001), 0);
         server.createContext("/", new StatsHandler());
         server.setExecutor(null);
         server.start();
@@ -141,6 +142,9 @@ public class MovrDemo {
             headers.set("Content-type", "text/html; charset=utf-8");
             final String response = "<h1>here's my response!</h1>";
             ex.sendResponseHeaders(200, response.length());
+            final OutputStream os = ex.getResponseBody();
+            os.write(response.getBytes());
+            os.close();
         }
     }
 }
