@@ -1,5 +1,9 @@
 package com.cockroachlabs;
 
+import com.sun.net.httpserver.Headers;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.confluent.kafka.streams.serdes.avro.GenericAvroSerde;
 import org.apache.avro.*;
@@ -13,15 +17,19 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.*;
-import org.apache.kafka.streams.state.*;
+import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.state.StoreBuilder;
+import org.apache.kafka.streams.state.Stores;
 
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Properties;
 
 public class MovrDemo {
-    public static void main(final String[] args) {
+    public static void main(final String[] args) throws Exception {
         final String bootstrapServers, schemaRegistry, topic;
         if (args.length < 3) {
             System.out.println("Connecting to Kafka and schema registry on localhost.");
@@ -97,27 +105,42 @@ public class MovrDemo {
         streams.cleanUp();
         streams.start();
 
+        HttpServer server = HttpServer.create(new InetSocketAddress(7001), 0);
+        server.createContext("/", new StatsHandler());
+        server.setExecutor(null);
+        server.start();
+
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            final ReadOnlyKeyValueStore<String, Long> activeRidesStore =
-                    streams.store(activeRidesByCityStateStoreName, QueryableStoreTypes.keyValueStore());
-            final KeyValueIterator<String, Long> ridesRange = activeRidesStore.all();
-            while (ridesRange.hasNext()) {
-                final KeyValue<String, Long> next = ridesRange.next();
-                System.out.println("rides in " + next.key + ": " + next.value);
-            }
-            ridesRange.close();
+//            final ReadOnlyKeyValueStore<String, Long> activeRidesStore =
+//                    streams.store(activeRidesByCityStateStoreName, QueryableStoreTypes.keyValueStore());
+//            final KeyValueIterator<String, Long> ridesRange = activeRidesStore.all();
+//            while (ridesRange.hasNext()) {
+//                final KeyValue<String, Long> next = ridesRange.next();
+//                System.out.println("rides in " + next.key + ": " + next.value);
+//            }
+//            ridesRange.close();
+//
+//            final ReadOnlyKeyValueStore<String, Long> revenueStore =
+//                    streams.store(revenueByCityStateStoreName, QueryableStoreTypes.keyValueStore());
+//            final KeyValueIterator<String, Long> revenueRange = activeRidesStore.all();
+//            while (revenueRange.hasNext()) {
+//                final KeyValue<String, Long> next = revenueRange.next();
+//                System.out.println("revenue in " + next.key + ": " + next.value);
+//            }
+//            revenueRange.close();
 
-            final ReadOnlyKeyValueStore<String, Long> revenueStore =
-                    streams.store(revenueByCityStateStoreName, QueryableStoreTypes.keyValueStore());
-            final KeyValueIterator<String, Long> revenueRange = activeRidesStore.all();
-            while (revenueRange.hasNext()) {
-                final KeyValue<String, Long> next = revenueRange.next();
-                System.out.println("revenue in " + next.key + ": " + next.value);
-            }
-            revenueRange.close();
-
+            server.stop(0);
             streams.close();
         }));
     }
 
+    static class StatsHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange ex) throws IOException {
+            final Headers headers = ex.getResponseHeaders();
+            headers.set("Content-type", "text/html; charset=utf-8");
+            final String response = "<h1>here's my response!</h1>";
+            ex.sendResponseHeaders(200, response.length());
+        }
+    }
 }
